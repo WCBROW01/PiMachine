@@ -5,13 +5,11 @@
 #define DIGITS_PER_ITERATION 14.1816474627254776555
 #define BITS_PER_DIGIT 3.32192809488736234789 // log2(10)
 
-void calcSeries(mpf_t rop, unsigned long n) {
+void calcSeries(mpz_t ropn, mpz_t ropd, unsigned long n) {
 	mpz_t numz, m, l, x, k, m1, m2;
-	mpf_t numf, denf, iteration;
 
 	// Initialize variables used in sum
 	mpz_inits(numz, m1, m2, NULL);
-	mpf_inits(numf, denf, iteration, NULL);
 
 	// Initialize sequence variables with zero values
 	mpz_init_set_si(m, 1);
@@ -19,14 +17,12 @@ void calcSeries(mpf_t rop, unsigned long n) {
 	mpz_init_set_si(x, 1);
 	mpz_init_set_si(k, -6);
 
-	// Derive sequence from m, l, x (first iteration)
+	// Derive numerator from m and l (first iteration)
 	mpz_mul(numz, m, l);
-	mpf_set_z(numf, numz);
-	mpf_set_z(denf, x);
-	mpf_div(iteration, numf, denf);
 
 	// Add this iteration of the sequence to the series
-	mpf_add(rop, rop, iteration);
+	mpz_add(ropn, ropn, numz);
+	mpz_add(ropd, ropd, x);
 
 	for (unsigned long q = 1; q < n; q++) {
 		// Calculate k
@@ -42,19 +38,16 @@ void calcSeries(mpf_t rop, unsigned long n) {
 		// Calculate x
 		mpz_mul_si(x, x, -262537412640768000L);
 
-		// Derive sequence from m, l, x
+		// Derive numerator from m, l
 		mpz_mul(numz, m, l);
-		mpf_set_z(numf, numz);
-		mpf_set_z(denf, x);
-		mpf_div(iteration, numf, denf);
 
 		// Add this iteration of the sequence to the series
-		mpf_add(rop, rop, iteration);
+		mpz_add(ropn, ropn, numz);
+		mpz_add(ropd, ropd, x);
 	}
 
 	// Free all of our variables
 	mpz_clears(numz, m, l, x, k, m1, m2, NULL);
-	mpf_clears(numf, denf, iteration, NULL);
 }
 
 // WARNING: this returns an malloc'd string! You should probably free it later.
@@ -63,22 +56,34 @@ char *calcPi(unsigned long digits) {
 	unsigned long precisionBits = (digits * BITS_PER_DIGIT) + 1;
 	mpf_set_default_prec(precisionBits);
 
-	mpf_t c, pi, sum;
+	mpf_t c, pi, invSum, sumnf, sumdf;
+	mpz_t sumnz, sumdz;
 	mp_exp_t exp;
-	mpf_inits(c, pi, sum, NULL);
+	mpf_inits(c, pi, invSum, sumnf, sumdf, NULL);
+	mpz_inits(sumnz, sumdz, NULL);
 
 	// Calculate constant C
 	mpf_sqrt_ui(c, 10005);
 	mpf_mul_ui(c, c, 426880);
 
-	// Solve for pi
-	calcSeries(sum, digits / DIGITS_PER_ITERATION + 1);
-	mpf_ui_div(sum, 1, sum);
-	mpf_mul(pi, sum, c);
+	// Solve for the series
+	calcSeries(sumnz, sumdz, digits / DIGITS_PER_ITERATION + 1);
+
+	// Convert the numerator and denomenator to floats
+	mpf_set_z(sumnf, sumnz);
+	mpf_set_z(sumdf, sumdz);
+
+	// Get the inverse of the sum
+	mpf_div(invSum, sumdf, sumnf);
+
+	// Multiply by c to get pi
+	mpf_mul(pi, invSum, c);
 
 	// Generate string and free variables
 	char *output = mpf_get_str(NULL, &exp, 10, digits, pi);
-	mpf_clears(c, pi, sum, NULL);
+	printf("%lu\n", exp);
+	mpf_clears(c, pi, invSum, sumnf, sumdf, NULL);
+	mpz_clears(sumnz, sumdz, NULL);
 	return output;
 }
 
