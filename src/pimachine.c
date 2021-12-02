@@ -5,13 +5,44 @@
 #define DIGITS_PER_ITERATION 14.1816474627254776555
 #define BITS_PER_DIGIT 3.32192809488736234789 // log2(10)
 
-void calcSeries(mpf_t rop, unsigned long n) {
-	mpz_t ropn, ropd, numz, denz, mnum, mden, l, x, k, m1, m2;
-	mpf_t numf, denf, iteration;
+typedef struct {
+	mpz_t n;
+	mpz_t d;
+} mpz_frac;
+
+void addFracArray(mpz_frac *rop, const mpz_frac arr[], unsigned long len) {
+	mpz_t multiple, num;
+	mpz_inits(multiple, num, NULL);
+
+	// Store the first numerator of arr into rop to use as initial value
+	mpz_set(rop->d, arr[0].d);
+
+	// Find LCM of fraction array and store it as the denomenator
+	for (unsigned long i = 1; i < len; i++) {
+		mpz_lcm(rop->d, rop->d, arr[i].d);
+	}
+
+	/* Scale the numerator of each fraction to the new denomenator
+	 * and sum it into the new numerator */
+	for (unsigned long i = 0; i < len; i++) {
+		mpz_div(multiple, rop->d, arr[i].d);
+		mpz_mul(num, multiple, arr[i].n);
+		mpz_add(rop->n, rop->n, num);
+	}
+
+	mpz_clears(multiple, num, NULL);
+}
+
+void calcSeries(mpz_frac *rop, unsigned long n) {
+	mpz_t mnum, mden, l, x, k, m1, m2;
+	mpz_frac facts[n];
+
+	// Initialize the mpz_frac array
+	for (unsigned long i = 0; i < n; i++)
+		mpz_inits(facts[i].n, facts[i].d, NULL);
 
 	// Initialize variables used in sum
-	mpz_inits(ropn, ropd, numz, denz, m1, m2, NULL);
-	mpf_inits(numf, denf, iteration, NULL);
+	mpz_inits(m1, m2, NULL);
 
 	// Initialize sequence variables with zero values
 	mpz_init_set_si(mnum, 1);
@@ -21,8 +52,8 @@ void calcSeries(mpf_t rop, unsigned long n) {
 	mpz_init_set_si(k, -6);
 
 	// Initialize iteration and rop variable
-	mpf_set_z(iteration, l);
-	mpf_set_z(rop, l);
+	mpz_set(facts[0].n, l);
+	mpz_set(facts[0].d, x);
 
 	for (unsigned long q = 1; q < n; q++) {
 		// Calculate k
@@ -40,43 +71,54 @@ void calcSeries(mpf_t rop, unsigned long n) {
 		mpz_mul_si(x, x, -262537412640768000L);
 
 		// Derive sequence from m, l, x
-		mpz_mul(numz, l, mnum);
-		mpz_mul(denz, x, mden);
-		mpf_set_z(numf, numz);
-		mpf_set_z(denf, denz);
-		mpf_div(iteration, numf, denf);
-
-		// Add this iteration of the sequence to the series
-		mpf_add(rop, rop, iteration);
+		mpz_mul(facts[q].n, l, mnum);
+		mpz_mul(facts[q].d, x, mden);
 	}
 
+	// Sum all of the generated fractions into rop.
+	if (n > 1) {
+		addFracArray(rop, facts, n);
+	} else {
+		mpz_set(rop->n, facts[0].n);
+		mpz_set(rop->d, facts[0].d);
+	}
+
+	// Free the mpz_frac array
+	for (unsigned long i = 0; i < n; i++)
+		mpz_clears(facts[i].n, facts[i].d, NULL);
+
 	// Free all of our variables
-	mpz_clears(numz, denz, l, x, k, m1, m2, NULL);
-	mpf_clears(numf, denf, iteration, NULL);
+	mpz_clears(mnum, mden, l, x, k, m1, m2, NULL);
 }
 
 // WARNING: this returns an malloc'd string! You should probably free it later.
 char *calcPi(unsigned long digits) {
 	// Set precision of our float.
-	unsigned long precisionBits = (digits * BITS_PER_DIGIT) + 1;
+	unsigned long precisionBits = digits * BITS_PER_DIGIT + 1;
+	unsigned long iterations = digits / DIGITS_PER_ITERATION + 1;
 	mpf_set_default_prec(precisionBits);
 
-	mpf_t c, pi, sum, invSum;
+	mpf_t c, pi, sumnf, sumdf, invSum;
+	mpz_frac sum;
 	mp_exp_t exp;
-	mpf_inits(c, pi, sum, invSum, NULL);
+	mpf_inits(c, pi, sumnf, sumdf, invSum, NULL);
+	mpz_inits(sum.n, sum.d, NULL);
 
 	// Calculate constant C
 	mpf_sqrt_ui(c, 10005);
 	mpf_mul_ui(c, c, 426880);
 
 	// Solve for pi
-	calcSeries(sum, digits / DIGITS_PER_ITERATION + 1);
-	mpf_ui_div(invSum, 1, sum);
+	calcSeries(&sum, iterations);
+	mpf_set_z(sumnf, sum.n);
+	mpf_set_z(sumdf, sum.d);
+	mpf_div(invSum, sumdf, sumnf);
 	mpf_mul(pi, invSum, c);
 
 	// Generate string and free variables
 	char *output = mpf_get_str(NULL, &exp, 10, digits, pi);
-	mpf_clears(c, pi, sum, invSum, NULL);
+	mpf_clears(c, pi, sumnf, sumdf, invSum, NULL);
+	mpz_clears(sum.n, sum.d, NULL);
 	return output;
 }
 
