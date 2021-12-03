@@ -4,31 +4,41 @@
 
 #define DIGITS_PER_ITERATION 14.1816474627254776555
 #define BITS_PER_DIGIT 3.32192809488736234789 // log2(10)
+#define FRACARRAY_MAXLEN 4
 
 using namespace boost::multiprecision;
 
+// Fractions will be initialized to 0/1 by default.
 typedef struct {
-	mpz_int n;
-	mpz_int d;
+	mpz_int n = 0;
+	mpz_int d = 1;
 } mpz_frac;
 
 void addFracArray(mpz_frac &rop, const mpz_frac arr[], unsigned long len) {
+	mpz_frac tempFrac;
+
+
 	// Find LCM of fraction array and store it as the denomenator
 	for (unsigned long i = 0; i < len; i++) {
-		rop.d = lcm(rop.d, arr[i].d);
+		tempFrac.d = lcm(tempFrac.d, arr[i].d);
 	}
 
 	/* Scale the numerator of each fraction to the new denomenator
 	 * and sum it into the new numerator */
 	for (unsigned long i = 0; i < len; i++) {
-		mpz_int multiple = rop.d / arr[i].d;
-		mpz_int num = multiple * arr[i].n;
-		rop.n += num;
+		tempFrac.n += (tempFrac.d / arr[i].d) * arr[i].n;
 	}
+
+	// Merge fractions
+	mpz_frac ropNew = rop;
+	ropNew.d = lcm(tempFrac.d, rop.d);
+	if (ropNew.n == 0) ropNew.n = tempFrac.n;
+	else ropNew.n += (tempFrac.d / rop.d) * rop.n;
+	rop = ropNew;
 }
 
 void calcSeries(mpz_frac &rop, unsigned long n) {
-	mpz_frac facts[n];
+	mpz_frac facts[FRACARRAY_MAXLEN];
 
 	// Initialize sequence variables with zero values
 	mpz_int mnum = 1;
@@ -38,8 +48,8 @@ void calcSeries(mpz_frac &rop, unsigned long n) {
 	mpz_int k = -6;
 
 	// Initialize iteration and rop variable
-	rop.n = facts[0].n = l;
-	rop.d = facts[0].d = x;
+	facts[0].n = l;
+	facts[0].d = x;
 
 	for (unsigned long q = 1; q < n; q++) {
 		// Calculate k
@@ -53,13 +63,17 @@ void calcSeries(mpz_frac &rop, unsigned long n) {
 		x *= -262537412640768000L;
 
 		// Derive sequence from m, l, x
-		facts[q].n = l * mnum;
-		facts[q].d = x * mden;
+		facts[q % FRACARRAY_MAXLEN].n = l * mnum;
+		facts[q % FRACARRAY_MAXLEN].d = x * mden;
+
+		if ((q + 1) % FRACARRAY_MAXLEN == 0) {
+			addFracArray(rop, facts, FRACARRAY_MAXLEN);
+		}
 	}
 
 	// Sum all of the generated fractions into rop.
-	if (n > 1)
-		addFracArray(rop, facts, n);
+	if (n % FRACARRAY_MAXLEN > 0)
+		addFracArray(rop, facts, n % FRACARRAY_MAXLEN);
 }
 
 // WARNING: this returns an malloc'd string! You should probably free it later.
