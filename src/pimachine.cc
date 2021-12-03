@@ -29,7 +29,7 @@ void addFracArray(mpz_frac *rop, const mpz_frac arr[], unsigned long len) {
 	for (unsigned long i = 0; i < len; i++) {
 		multiple = rop->d / arr[i].d;
 		num = multiple * arr[i].n;
-		rop->n *= num;
+		rop->n += num;
 	}
 
 	//mpz_clears(multiple, num, NULL);
@@ -98,7 +98,7 @@ char *calcPi(unsigned long digits) {
 	// Set precision of our float.
 	unsigned long precisionBits = digits * BITS_PER_DIGIT + 1;
 	unsigned long iterations = digits / DIGITS_PER_ITERATION + 1;
-	mpf_set_default_prec(precisionBits);
+	mpf_float::default_precision(precisionBits);
 
 	mpf_float c, pi, sumnf, sumdf, invSum;
 	mpz_frac sum;
