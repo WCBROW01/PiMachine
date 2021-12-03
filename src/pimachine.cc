@@ -12,25 +12,22 @@ typedef struct {
 	mpz_int d;
 } mpz_frac;
 
-void addFracArray(mpz_frac *rop, const mpz_frac arr[], unsigned long len) {
-	// Store the first numerator of arr into rop to use as initial value
-	rop->d = arr[0].d;
-
+void addFracArray(mpz_frac &rop, const mpz_frac arr[], unsigned long len) {
 	// Find LCM of fraction array and store it as the denomenator
-	for (unsigned long i = 1; i < len; i++) {
-		rop->d = lcm(rop->d, arr[i].d);
+	for (unsigned long i = 0; i < len; i++) {
+		rop.d = lcm(rop.d, arr[i].d);
 	}
 
 	/* Scale the numerator of each fraction to the new denomenator
 	 * and sum it into the new numerator */
 	for (unsigned long i = 0; i < len; i++) {
-		mpz_int multiple = rop->d / arr[i].d;
+		mpz_int multiple = rop.d / arr[i].d;
 		mpz_int num = multiple * arr[i].n;
-		rop->n += num;
+		rop.n += num;
 	}
 }
 
-void calcSeries(mpz_frac *rop, unsigned long n) {
+void calcSeries(mpz_frac &rop, unsigned long n) {
 	mpz_frac facts[n];
 
 	// Initialize sequence variables with zero values
@@ -41,8 +38,8 @@ void calcSeries(mpz_frac *rop, unsigned long n) {
 	mpz_int k = -6;
 
 	// Initialize iteration and rop variable
-	facts[0].n = l;
-	facts[0].d = x;
+	rop.n = facts[0].n = l;
+	rop.d = facts[0].d = x;
 
 	for (unsigned long q = 1; q < n; q++) {
 		// Calculate k
@@ -61,12 +58,8 @@ void calcSeries(mpz_frac *rop, unsigned long n) {
 	}
 
 	// Sum all of the generated fractions into rop.
-	if (n > 1) {
+	if (n > 1)
 		addFracArray(rop, facts, n);
-	} else {
-		rop->n = facts[0].n;
-		rop->d = facts[0].d;
-	}
 }
 
 // WARNING: this returns an malloc'd string! You should probably free it later.
@@ -85,7 +78,7 @@ char *calcPi(unsigned long digits) {
 	c *= 426880;
 
 	// Solve for pi
-	calcSeries(&sum, iterations);
+	calcSeries(sum, iterations);
 	invSum = (mpf_float) sum.d / sum.n;
 	pi = invSum * c;
 
