@@ -1,2 +1,2 @@
-pimachine: src/pimachine.c
-	gcc -Wall -Wextra src/pimachine.c -g -lgmp -o pimachine -O2
+pimachine: src/pimachine.cc
+	g++ -Wall -Wextra src/pimachine.cc -g -lgmp -o pimachine -O2
