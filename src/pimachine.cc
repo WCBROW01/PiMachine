@@ -13,9 +13,6 @@ typedef struct {
 } mpz_frac;
 
 void addFracArray(mpz_frac *rop, const mpz_frac arr[], unsigned long len) {
-	mpz_int multiple, num;
-	//mpz_inits(multiple, num, NULL);
-
 	// Store the first numerator of arr into rop to use as initial value
 	rop->d = arr[0].d;
 
@@ -27,31 +24,21 @@ void addFracArray(mpz_frac *rop, const mpz_frac arr[], unsigned long len) {
 	/* Scale the numerator of each fraction to the new denomenator
 	 * and sum it into the new numerator */
 	for (unsigned long i = 0; i < len; i++) {
-		multiple = rop->d / arr[i].d;
-		num = multiple * arr[i].n;
+		mpz_int multiple = rop->d / arr[i].d;
+		mpz_int num = multiple * arr[i].n;
 		rop->n += num;
 	}
-
-	//mpz_clears(multiple, num, NULL);
 }
 
 void calcSeries(mpz_frac *rop, unsigned long n) {
-	mpz_int mnum, mden, l, x, k, m1, m2;
 	mpz_frac facts[n];
 
-	// Initialize the mpz_frac array
-	//for (unsigned long i = 0; i < n; i++)
-		//mpz_inits(facts[i].n, facts[i].d, NULL);
-
-	// Initialize variables used in sum
-	//mpz_inits(m1, m2, NULL);
-
 	// Initialize sequence variables with zero values
-	mnum = 1;
-	mden = 1;
-	l = 13591409;
-	x = 1;
-	k = -6;
+	mpz_int mnum = 1;
+	mpz_int mden = 1;
+	mpz_int l = 13591409;
+	mpz_int x = 1;
+	mpz_int k = -6;
 
 	// Initialize iteration and rop variable
 	facts[0].n = l;
@@ -61,12 +48,8 @@ void calcSeries(mpz_frac *rop, unsigned long n) {
 		// Calculate k
 		k += 12;
 		// Calculate m
-		m1 = pow(k, 3);
-		m2 = k * 16;
-		m1 -= m2;
-		m2 = q * q * q;
-		mnum *= m1;
-		mden *= m2;
+		mnum *= pow(k, 3) - (k * 16);
+		mden *= q * q * q;
 		// Calculate l
 		l += 545140134;
 		// Calculate x
@@ -84,13 +67,6 @@ void calcSeries(mpz_frac *rop, unsigned long n) {
 		rop->n = facts[0].n;
 		rop->d = facts[0].d;
 	}
-
-	// Free the mpz_frac array
-	//for (unsigned long i = 0; i < n; i++)
-		//mpz_clears(facts[i].n, facts[i].d, NULL);
-
-	// Free all of our variables
-	//mpz_clears(mnum, mden, l, x, k, m1, m2, NULL);
 }
 
 // WARNING: this returns an malloc'd string! You should probably free it later.
@@ -100,29 +76,21 @@ char *calcPi(unsigned long digits) {
 	unsigned long iterations = digits / DIGITS_PER_ITERATION + 1;
 	mpf_float::default_precision(precisionBits);
 
-	mpf_float c, pi, sumnf, sumdf, invSum;
+	mpf_float pi, invSum;
 	mpz_frac sum;
 	mp_exp_t exp;
-	//mpf_inits(c, pi, sumnf, sumdf, invSum, NULL);
-	//mpz_inits(sum.n, sum.d, NULL);
 
 	// Calculate constant C
-	c = sqrt(10005);
+	mpf_float c = sqrt(10005);
 	c *= 426880;
 
 	// Solve for pi
 	calcSeries(&sum, iterations);
-	//mpf_set_z(sumnf, sum.n.backend().data());
-	//mpf_set_z(sumdf, sum.d.backend().data());
-	sumnf = (mpf_float) sum.n;
-	sumdf = (mpf_float) sum.d;
-	invSum = sumdf / sumnf;
+	invSum = (mpf_float) sum.d / sum.n;
 	pi = invSum * c;
 
 	// Generate string and free variables
 	char *output = mpf_get_str(NULL, &exp, 10, digits, pi.backend().data());
-	//mpf_clears(c, pi, sumnf, sumdf, invSum, NULL);
-	//mpz_clears(sum.n, sum.d, NULL);
 	return output;
 }
 
