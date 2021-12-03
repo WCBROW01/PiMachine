@@ -46,7 +46,7 @@ void calcSeries(mpz_frac &rop, unsigned long n) {
 		k += 12;
 		// Calculate m
 		mnum *= pow(k, 3) - (k * 16);
-		mden *= q * q * q;
+		mden *= pow((mpz_int) q, 3);
 		// Calculate l
 		l += 545140134;
 		// Calculate x
